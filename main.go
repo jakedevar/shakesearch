@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+  "regexp"
 )
 
 func main() {
@@ -48,7 +49,15 @@ func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request
 			w.Write([]byte("missing search query in URL params"))
 			return
 		}
-		results := searcher.Search(query[0])
+    println(r.URL.Query())
+		caseInsensitive, ok := r.URL.Query()["caseInsensitive"]
+		if !ok || len(caseInsensitive[0]) < 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("missing caseInsensitive in URL params"))
+			return
+		}
+    
+		results := searcher.Search(query, caseInsensitive)
 		buf := &bytes.Buffer{}
 		enc := json.NewEncoder(buf)
 		err := enc.Encode(results)
@@ -57,6 +66,7 @@ func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request
 			w.Write([]byte("encoding failure"))
 			return
 		}
+    enableCORS(&w)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(buf.Bytes())
 	}
@@ -72,11 +82,40 @@ func (s *Searcher) Load(filename string) error {
 	return nil
 }
 
-func (s *Searcher) Search(query string) []string {
-	idxs := s.SuffixArray.Lookup([]byte(query), -1)
+func (s *Searcher) Search(query []string, caseInsensitive []string) []string {
+	idxs := s.determineSearch(query[0], caseInsensitive[0])
 	results := []string{}
-	for _, idx := range idxs {
-		results = append(results, s.CompleteWorks[idx-250:idx+250])
+	for _, idxPair := range idxs {
+    start, end := idxPair[0], idxPair[1]
+    if start > 250 {
+      start = start - 250
+    } else {
+      start = 0
+    }
+
+    if end > len(s.CompleteWorks) - 250 {
+      end = len(s.CompleteWorks) 
+    } else {
+      end = end + 250
+    }
+		results = append(results, s.CompleteWorks[start:end])
 	}
+  // println(len(results))
 	return results
+}
+
+func (s *Searcher) determineSearch(query string, caseInsensitive string) [][]int {
+  if caseInsensitive == "true" {
+    re := regexp.MustCompile("(?i)" + query)
+    return s.SuffixArray.FindAllIndex(re, -1)
+  } else {
+    re := regexp.MustCompile(query)
+    return s.SuffixArray.FindAllIndex(re, -1)
+  }
+}
+
+func enableCORS(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 }
