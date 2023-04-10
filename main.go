@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
   "regexp"
+  "strconv"
 )
 
 func main() {
@@ -41,51 +42,94 @@ type Searcher struct {
 	SuffixArray   *suffixarray.Index
 }
 
+type Params struct {
+  Query string
+  CaseSensitive string
+  PageNumber int
+  Quantity int
+}
+
+func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
+  query, ok := r.URL.Query()["query"]
+  if !ok || len(query[0]) < 1 {
+    w.WriteHeader(http.StatusBadRequest)
+    w.Write([]byte("missing search query in URL params"))
+    return Params {}
+  }
+
+  caseSensitive, ok := r.URL.Query()["caseSensitive"]
+  if !ok || len(caseSensitive[0]) < 1 {
+    w.WriteHeader(http.StatusBadRequest)
+    w.Write([]byte("missing case sensitive in URL params"))
+    return Params {}
+  }
+
+  pageNumber, ok := r.URL.Query()["pageNumber"]
+  if !ok || len(pageNumber[0]) < 1 {
+    w.WriteHeader(http.StatusBadRequest)
+    w.Write([]byte("missing case sensitive in URL params"))
+    return Params {}
+  }
+  parsedPageNumber, err := strconv.Atoi(pageNumber[0])
+  if err != nil {
+    w.WriteHeader(http.StatusBadRequest)
+    w.Write([]byte("invalid page number"))
+    return Params {}
+  }
+
+  quantity, ok := r.URL.Query()["quantity"]
+  if !ok || len(quantity[0]) < 1 {
+    w.WriteHeader(http.StatusBadRequest)
+    w.Write([]byte("missing case sensitive in URL params"))
+    return Params {}
+  }
+  parsedQuantity, err := strconv.Atoi(quantity[0])
+  if err != nil {
+    w.WriteHeader(http.StatusBadRequest)
+    w.Write([]byte("invalid quantity"))
+    return Params {}
+  }
+
+  return Params {
+    Query: query[0],
+    CaseSensitive: caseSensitive[0],
+    PageNumber: parsedPageNumber,
+    Quantity: parsedQuantity,
+  }
+}
+
 func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		query, ok := r.URL.Query()["q"]
-		if !ok || len(query[0]) < 1 {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("missing search query in URL params"))
-			return
-		}
-    println(r.URL.Query())
-		caseInsensitive, ok := r.URL.Query()["caseInsensitive"]
-		if !ok || len(caseInsensitive[0]) < 1 {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("missing caseInsensitive in URL params"))
-			return
-		}
-    
-		results := searcher.Search(query, caseInsensitive)
-		buf := &bytes.Buffer{}
-		enc := json.NewEncoder(buf)
-		err := enc.Encode(results)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("encoding failure"))
-			return
-		}
+  return func(w http.ResponseWriter, r *http.Request) {
+    params := populateQueryParams(w, r)
+    results := searcher.Search(params.Query, params.CaseSensitive, params.PageNumber, params.Quantity)
+    buf := &bytes.Buffer{}
+    enc := json.NewEncoder(buf)
+    err := enc.Encode(results)
+    if err != nil {
+      w.WriteHeader(http.StatusInternalServerError)
+      w.Write([]byte("encoding failure"))
+      return
+    }
     enableCORS(&w)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(buf.Bytes())
-	}
+    w.Header().Set("Content-Type", "application/json")
+    w.Write(buf.Bytes())
+  }
 }
 
 func (s *Searcher) Load(filename string) error {
-	dat, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return fmt.Errorf("Load: %w", err)
-	}
-	s.CompleteWorks = string(dat)
-	s.SuffixArray = suffixarray.New(dat)
-	return nil
+  dat, err := ioutil.ReadFile(filename)
+  if err != nil {
+    return fmt.Errorf("Load: %w", err)
+  }
+  s.CompleteWorks = string(dat)
+  s.SuffixArray = suffixarray.New(dat)
+  return nil
 }
 
-func (s *Searcher) Search(query []string, caseInsensitive []string) []string {
-	idxs := s.determineSearch(query[0], caseInsensitive[0])
-	results := []string{}
-	for _, idxPair := range idxs {
+func (s *Searcher) Search(query string, caseSensitive string, pageNumber int, quantity int) []string {
+  idxs := s.determineSearch(query, caseSensitive)
+  results := []string{}
+  for _, idxPair := range idxs {
     start, end := idxPair[0], idxPair[1]
     if start > 250 {
       start = start - 250
@@ -98,24 +142,24 @@ func (s *Searcher) Search(query []string, caseInsensitive []string) []string {
     } else {
       end = end + 250
     }
-		results = append(results, s.CompleteWorks[start:end])
-	}
+    results = append(results, s.CompleteWorks[start:end])
+  }
   // println(len(results))
-	return results
+  return results[pageNumber-1:quantity]
 }
 
-func (s *Searcher) determineSearch(query string, caseInsensitive string) [][]int {
-  if caseInsensitive == "true" {
-    re := regexp.MustCompile("(?i)" + query)
+func (s *Searcher) determineSearch(query string, caseSensitive string) [][]int {
+  if caseSensitive == "true" {
+    re := regexp.MustCompile(query)
     return s.SuffixArray.FindAllIndex(re, -1)
   } else {
-    re := regexp.MustCompile(query)
+    re := regexp.MustCompile("(?i)" + query)
     return s.SuffixArray.FindAllIndex(re, -1)
   }
 }
 
 func enableCORS(w *http.ResponseWriter) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+  (*w).Header().Set("Access-Control-Allow-Origin", "*")
+  (*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+  (*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 }
