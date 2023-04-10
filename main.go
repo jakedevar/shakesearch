@@ -49,6 +49,11 @@ type Params struct {
   Quantity int
 }
 
+type Response struct {
+  Results []string
+  TotalResults int
+}
+
 func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
   query, ok := r.URL.Query()["query"]
   if !ok || len(query[0]) < 1 {
@@ -126,7 +131,7 @@ func (s *Searcher) Load(filename string) error {
   return nil
 }
 
-func (s *Searcher) Search(query string, caseSensitive string, pageNumber int, quantity int) []string {
+func (s *Searcher) Search(query string, caseSensitive string, pageNumber int, quantity int) Response {
   idxs := s.determineSearch(query, caseSensitive)
   results := []string{}
   for _, idxPair := range idxs {
@@ -144,8 +149,15 @@ func (s *Searcher) Search(query string, caseSensitive string, pageNumber int, qu
     }
     results = append(results, s.CompleteWorks[start:end])
   }
-  // println(len(results))
-  return results[pageNumber-1:quantity]
+  startPageNumber := (pageNumber - 1) * quantity
+  endPageNumber := startPageNumber + quantity
+  println(len(results), startPageNumber, endPageNumber)
+  paginatedResults := results[startPageNumber:endPageNumber]
+  resultsLength := len(results)
+  return Response {
+    Results: paginatedResults,
+    TotalResults: resultsLength,
+  }
 }
 
 func (s *Searcher) determineSearch(query string, caseSensitive string) [][]int {
