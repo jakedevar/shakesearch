@@ -43,7 +43,7 @@ type Searcher struct {
 }
 
 type Params struct {
-  Query string
+  SearchTerm string
   CaseSensitive string
   PageNumber int
   Quantity int
@@ -55,10 +55,10 @@ type Response struct {
 }
 
 func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
-  query, ok := r.URL.Query()["query"]
-  if !ok || len(query[0]) < 1 {
+  searchTerm, ok := r.URL.Query()["searchTerm"]
+  if !ok || len(searchTerm[0]) < 1 {
     w.WriteHeader(http.StatusBadRequest)
-    w.Write([]byte("missing search query in URL params"))
+    w.Write([]byte("missing search searchTerm in URL params"))
     return Params {}
   }
 
@@ -96,7 +96,7 @@ func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
   }
 
   return Params {
-    Query: query[0],
+    SearchTerm: searchTerm[0],
     CaseSensitive: caseSensitive[0],
     PageNumber: parsedPageNumber,
     Quantity: parsedQuantity,
@@ -106,7 +106,7 @@ func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
 func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
   return func(w http.ResponseWriter, r *http.Request) {
     params := populateQueryParams(w, r)
-    results := searcher.Search(params.Query, params.CaseSensitive, params.PageNumber, params.Quantity)
+    results := searcher.Search(params.SearchTerm, params.CaseSensitive, params.PageNumber, params.Quantity)
     buf := &bytes.Buffer{}
     enc := json.NewEncoder(buf)
     err := enc.Encode(results)
@@ -131,8 +131,8 @@ func (s *Searcher) Load(filename string) error {
   return nil
 }
 
-func (s *Searcher) Search(query string, caseSensitive string, pageNumber int, quantity int) Response {
-  idxs := s.determineSearch(query, caseSensitive)
+func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber int, quantity int) Response {
+  idxs := s.determineSearch(searchTerm, caseSensitive)
   results := []string{}
   for _, idxPair := range idxs {
     start, end := idxPair[0], idxPair[1]
@@ -151,7 +151,6 @@ func (s *Searcher) Search(query string, caseSensitive string, pageNumber int, qu
   }
   startPageNumber := (pageNumber - 1) * quantity
   endPageNumber := startPageNumber + quantity
-  println(len(results), startPageNumber, endPageNumber)
   paginatedResults := results[startPageNumber:endPageNumber]
   resultsLength := len(results)
   return Response {
@@ -160,12 +159,12 @@ func (s *Searcher) Search(query string, caseSensitive string, pageNumber int, qu
   }
 }
 
-func (s *Searcher) determineSearch(query string, caseSensitive string) [][]int {
+func (s *Searcher) determineSearch(searchTerm string, caseSensitive string) [][]int {
   if caseSensitive == "true" {
-    re := regexp.MustCompile(query)
+    re := regexp.MustCompile(searchTerm)
     return s.SuffixArray.FindAllIndex(re, -1)
   } else {
-    re := regexp.MustCompile("(?i)" + query)
+    re := regexp.MustCompile("(?i)" + searchTerm)
     return s.SuffixArray.FindAllIndex(re, -1)
   }
 }
