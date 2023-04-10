@@ -150,9 +150,16 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
     results = append(results, s.CompleteWorks[start:end])
   }
   startPageNumber := (pageNumber - 1) * quantity
-  endPageNumber := startPageNumber + quantity
-  paginatedResults := results[startPageNumber:endPageNumber]
   resultsLength := len(results)
+
+  var endPageNumber int
+  if startPageNumber + quantity > resultsLength {
+    endPageNumber = resultsLength
+  } else {
+    endPageNumber = startPageNumber + quantity
+  }
+
+  paginatedResults := results[startPageNumber:endPageNumber]
   return Response {
     Results: paginatedResults,
     TotalResults: resultsLength,
