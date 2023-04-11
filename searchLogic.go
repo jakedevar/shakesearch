@@ -109,7 +109,7 @@ func (s *Searcher) Load(filename string) error {
 }
 
 func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber int, quantity int) Response {
-  idxs := s.determineSearch(searchTerm, caseSensitive, pageNumber, quantity)
+  idxs := s.determineSearch(searchTerm, caseSensitive)
   results := []string{}
   for _, idxPair := range idxs {
     start, end := idxPair[0], idxPair[1]
@@ -143,26 +143,34 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
   }
 }
 
-func (s *Searcher) determineSearch(searchTerm string, caseSensitive string, pageNumber int, quantity int) [][]int {
-  if caseSensitive == "true" {
-    searchTerm = "[^a-zA-Z]" + searchTerm + "[^a-zA-Z]"
-    re := regexp.MustCompile(searchTerm)
-    return s.SuffixArray.FindAllIndex(re, -1)
-  } else {
-    results := [][]int{}
-    splitWorks := strings.Split(s.CompleteWorks, " ")
-    var fuzzySearchResults []FuzzyResult
-    fuzzySearchResults = fuzzySearch(searchTerm, splitWorks, 2)
-    println(len(fuzzySearchResults))
-    for _, item := range fuzzySearchResults[0:2] {
-      fuzzySearchTerm := "[^a-zA-Z]" + item.Value + "[^a-zA-Z]"
+func (s *Searcher) determineSearch(searchTerm string, caseSensitive string) [][]int {
+  // if caseSensitive == "true" {
+  //   searchTerm = "[^a-zA-Z]" + searchTerm + "[^a-zA-Z]"
+  //   re := regexp.MustCompile(searchTerm)
+  //   return s.SuffixArray.FindAllIndex(re, -1)
+  // } else {
+    return fuzzySearchResults(s, searchTerm, caseSensitive)
+  // }
+}
+
+func fuzzySearchResults(s *Searcher, searchTerm string, caseSensitive string) [][]int {
+  results := [][]int{}
+  splitWorks := strings.Split(s.CompleteWorks, " ")
+  var fuzzySearchResults []FuzzyResult
+  fuzzySearchResults = fuzzySearch(searchTerm, splitWorks, caseSensitive)
+  println(fuzzySearchResults[0].Value, fuzzySearchResults[1].Value, fuzzySearchResults[2].Value, fuzzySearchResults[3].Value, fuzzySearchResults[4].Value)
+  for _, item := range fuzzySearchResults {
+    fuzzySearchTerm := "[^a-zA-Z]" + item.Value + "[^a-zA-Z]"
+    if caseSensitive == "true" {
       fuzzySearchTerm = "[^a-zA-Z]" + fuzzySearchTerm + "[^a-zA-Z]"
-      re := regexp.MustCompile("(?i)" + fuzzySearchTerm)
-      results = append(results, s.SuffixArray.FindAllIndex(re, -1)...)
+    } else {
+      fuzzySearchTerm = "(?i)[^a-zA-Z]" + fuzzySearchTerm + "[^a-zA-Z]"
     }
-    println(results[0])
-    return results
+    println(fuzzySearchTerm)
+    re := regexp.MustCompile(fuzzySearchTerm)
+    results = append(results, s.SuffixArray.FindAllIndex(re, -1)...)
   }
+  return results
 }
 
 func enableCORS(w *http.ResponseWriter) {

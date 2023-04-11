@@ -72,20 +72,32 @@ func (f FuzzyResultsSlice) Swap(i, j int) {
   f[i], f[j] = f[j], f[i]
 }
 
-func fuzzySearch(query string, dataset []string, threshold int) []FuzzyResult {
+func fuzzySearch(query string, dataset []string, caseSensitive string) []FuzzyResult {
+  threshold := 2
 	results := []FuzzyResult{}
   seenItems := make(map[string]bool)
+  var distance int
 	for _, item := range dataset {
     if seenItems[item] {
       continue
     } else {
       seenItems[item] = true
     }
-		distance := levenshteinDistance(strings.ToLower(query), strings.ToLower(item))
-		if distance <= threshold {
-			results = append(results, FuzzyResult{Value: item, Distance: distance})
-		}
-	}
-	sort.Sort(FuzzyResultsSlice(results))
-  return results
+    if caseSensitive == "true" {
+      distance = levenshteinDistance(query, item)
+    } else {
+      distance = levenshteinDistance(strings.ToLower(query), strings.ToLower(item))
+    }
+    if distance <= threshold {
+      results = append(results, FuzzyResult{Value: item, Distance: distance})
+    }
+  }
+  sort.Sort(FuzzyResultsSlice(results))
+  var end int
+  if len(results) > 5 {
+    end = 5
+  } else {
+    end = len(results)
+  }
+  return results[0:end]
 }

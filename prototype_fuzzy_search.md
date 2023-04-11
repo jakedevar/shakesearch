@@ -11,6 +11,8 @@ that would easily solve that match problem. but this will greatly reduce efficie
 2. make a way to specify either a sliding scale or a boolean in the query string to determine fuzzy.
 3. make sure that fuzzy searches are highlighted.
 
+2. i think based on implementing the search 
+
 1. how to implement fuzzy on the backend
   a. i can implement the levenshtien distance algorithm 
   b. i can split up the complete works that is stored in the Searcher struct so that it makes an array of strings
