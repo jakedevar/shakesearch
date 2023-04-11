@@ -1,0 +1,91 @@
+package main
+
+import (
+	"strings"
+  "sort"
+)
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func levenshteinDistance(s1, s2 string) int {
+	if len(s1) == 0 {
+		return len(s2)
+	}
+	if len(s2) == 0 {
+		return len(s1)
+	}
+
+	matrix := make([][]int, len(s1)+1)
+	for i := range matrix {
+		matrix[i] = make([]int, len(s2)+1)
+	}
+
+	for i := 1; i <= len(s1); i++ {
+		matrix[i][0] = i
+	}
+	for j := 1; j <= len(s2); j++ {
+		matrix[0][j] = j
+	}
+
+	for i := 1; i <= len(s1); i++ {
+		for j := 1; j <= len(s2); j++ {
+			cost := 0
+			if s1[i-1] == s2[j-1] {
+				cost = 0
+			} else {
+				cost = 1
+			}
+
+			matrix[i][j] = min(
+				matrix[i-1][j]+1,
+				min(
+					matrix[i][j-1]+1,
+					matrix[i-1][j-1]+cost,
+				),
+			)
+		}
+	}
+
+	return matrix[len(s1)][len(s2)]
+}
+
+
+type FuzzyResult struct {
+	Value    string
+	Distance int
+}
+
+type FuzzyResultsSlice []FuzzyResult
+
+func (f FuzzyResultsSlice) Len() int {
+  return len(f)
+}
+func (f FuzzyResultsSlice) Less(i, j int) bool {
+  return f[i].Distance < f[j].Distance
+}
+func (f FuzzyResultsSlice) Swap(i, j int) {
+  f[i], f[j] = f[j], f[i]
+}
+
+func fuzzySearch(query string, dataset []string, threshold int) []FuzzyResult {
+	results := []FuzzyResult{}
+  seenItems := make(map[string]bool)
+	for _, item := range dataset {
+    if seenItems[item] {
+      continue
+    } else {
+      seenItems[item] = true
+    }
+		distance := levenshteinDistance(strings.ToLower(query), strings.ToLower(item))
+		if distance <= threshold {
+			results = append(results, FuzzyResult{Value: item, Distance: distance})
+		}
+	}
+	sort.Sort(FuzzyResultsSlice(results))
+  return results
+}
