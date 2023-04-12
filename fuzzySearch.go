@@ -4,6 +4,7 @@ import (
 	"strings"
   "sort"
   "regexp"
+  "unicode"
 )
 
 func min(a, b int) int {
@@ -73,7 +74,7 @@ func (f FuzzyResultsSlice) Swap(i, j int) {
   f[i], f[j] = f[j], f[i]
 }
 
-func fuzzySearch(query string, dataset []string, caseSensitive string) []FuzzyResult {
+func fuzzySearch(searchTerm string, dataset []string, caseSensitive string) []FuzzyResult {
   threshold := 2
 	results := []FuzzyResult{}
   seenItems := make(map[string]bool)
@@ -87,10 +88,16 @@ func fuzzySearch(query string, dataset []string, caseSensitive string) []FuzzyRe
     } else {
       seenItems[item] = true
     }
+
+    searchTermFirstChar := rune(searchTerm[0])
     if caseSensitive == "true" {
-      distance = levenshteinDistance(query, item)
+      item = filterString(item, searchTermFirstChar)
+      if item == "" {
+        continue
+      }
+      distance = levenshteinDistance(searchTerm, item)
     } else {
-      distance = levenshteinDistance(strings.ToLower(query), strings.ToLower(item))
+      distance = levenshteinDistance(strings.ToLower(searchTerm), strings.ToLower(item))
     }
     if distance <= threshold {
       results = append(results, FuzzyResult{Value: item, Distance: distance})
@@ -103,5 +110,22 @@ func fuzzySearch(query string, dataset []string, caseSensitive string) []FuzzyRe
   } else {
     end = len(results)
   }
-  return results[0:end]
+  return results[:end]
+}
+
+func filterString(item string, searchTermFirstChar rune) string {
+  if len(item) == 0 {
+    return ""
+  }
+  firstCharOfItem := rune(item[0])
+  if unicode.IsUpper(searchTermFirstChar) == true {
+    if unicode.IsUpper(firstCharOfItem) == false {
+      return ""
+    }
+  } else {
+    if unicode.IsUpper(firstCharOfItem) == true {
+      return ""
+    }
+  }
+  return item
 }

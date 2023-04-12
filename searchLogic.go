@@ -120,7 +120,6 @@ func (s *Searcher) InitializeSearchCache() {
   if err != nil {
     println("Error opening search cache db")
   }
-  println("Opened search cache database")
 
   tableDeleteStatement, err := db.Prepare("DROP TABLE IF EXISTS searchCache")
   if err != nil {
@@ -136,6 +135,7 @@ func (s *Searcher) InitializeSearchCache() {
   if err != nil {
     println("Error creating table")
   }
+   
   s.SearchCache = db
 }
 
@@ -151,7 +151,7 @@ func (s *Searcher) Load(filename string) error {
 
 func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber int, quantity int, exactMatch string) Response {
   
-  rows, _ := s.SearchCache.Query("SELECT * FROM searchCache WHERE storedSearchTerm = ?", searchTerm + exactMatch)
+  rows, _ := s.SearchCache.Query("SELECT * FROM searchCache WHERE storedSearchTerm = ?", searchTerm + caseSensitive + exactMatch)
   defer rows.Close()
 
   var id int
@@ -173,7 +173,7 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
       println("Error marshalling results")
     }
     insertStatement := "INSERT INTO searchCache (storedSearchTerm, searchResult) VALUES (?, ?)"
-    _, err = s.SearchCache.Exec(insertStatement, searchTerm + exactMatch, string(jsonResults))
+    _, err = s.SearchCache.Exec(insertStatement, searchTerm + caseSensitive + exactMatch, string(jsonResults))
     if err != nil {
       println("Error inserting into search cache")
     }
@@ -187,7 +187,7 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
   } else {
     endPageNumber = startPageNumber + quantity
   }
-
+  println("startPageNumber: ", startPageNumber, " endPageNumber: ", endPageNumber)
   paginatedResults := results[startPageNumber:endPageNumber]
   return Response {
     Results: paginatedResults,
@@ -197,6 +197,8 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
 
 func (s *Searcher) determineSearch(searchTerm string, caseSensitive string, exactMatch string) SearchResults {
   if exactMatch == "true" {
+    searchTerm = regexp.QuoteMeta(searchTerm)
+    println("searchTerm: ", searchTerm)
     return searchExactMatch(s, searchTerm)
   } else {
     return fuzzySearchResults(s, searchTerm, caseSensitive)
@@ -204,7 +206,6 @@ func (s *Searcher) determineSearch(searchTerm string, caseSensitive string, exac
 }
 
 func searchExactMatch(s *Searcher, searchTerm string) SearchResults {
-  searchTerm = "[^a-zA-Z]" + searchTerm + "[^a-zA-Z]"
   re := regexp.MustCompile(searchTerm)
   idxs := s.SuffixArray.FindAllIndex(re, -1)
   return createSearchResultsArray(s, idxs, searchTerm)
