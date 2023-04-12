@@ -14,6 +14,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+  searcher.InitializeSearchCache()
+
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/", fs)
 

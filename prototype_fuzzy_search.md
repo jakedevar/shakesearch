@@ -43,6 +43,13 @@ that would easily solve that match problem. but this will greatly reduce efficie
     upon further inspection i really just need to do like 5 results at a time. but how would i implement pagination logic so that all the results are returned
     eventually?
 
+  so the above is now working. however i have run into a problem. using the levenshtien distance it can find all instances of words like hamlet. however what it 
+  is doing now is finding all the word that include punctuation. so its like hamlet hamlet. hamlet! and the like. as a searcher. i don't care about punctuation. 
+  i just want the word and words like it. i wonder if there is a way i can just match the word. there is the case that someone is looking for hamlet! though
+  i would want the exact match in that instance. that being said i already have an implementation of an exact match. i can just make it so that the user
+  inputs exact match if they want something like hamlet!
+  else i can just ignore case and return words that would actually help with a misspelling. this is a small thing to implement so i might just try it
+
   
 
 notes: just jutting down some thoughts here. if i return the actual distance that the word was from the mispelled word i can sort the results so that the ones

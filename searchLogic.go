@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"index/suffixarray"
 	"io/ioutil"
-	// "log"
 	"net/http"
-	// "os"
   "regexp"
   "strconv"
   "strings"
+  "database/sql"
+  _ "github.com/mattn/go-sqlite3"
 )
 
 type Searcher struct {
-	CompleteWorks string
-	SuffixArray   *suffixarray.Index
+  CompleteWorks string
+  SuffixArray *suffixarray.Index
+  SearchCache *sql.DB
 }
 
 type Params struct {
@@ -24,12 +25,20 @@ type Params struct {
   CaseSensitive string
   PageNumber int
   Quantity int
+  ExactMatch string
 }
 
 type Response struct {
-  Results []string
+  Results SearchResults
   TotalResults int
 }
+
+type SearchResult struct {
+  SearchTerm string
+  Line string
+}
+
+type SearchResults []SearchResult
 
 func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
   searchTerm, ok := r.URL.Query()["searchTerm"]
@@ -41,6 +50,13 @@ func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
 
   caseSensitive, ok := r.URL.Query()["caseSensitive"]
   if !ok || len(caseSensitive[0]) < 1 {
+    w.WriteHeader(http.StatusBadRequest)
+    w.Write([]byte("missing case sensitive in URL params"))
+    return Params {}
+  }
+
+  exactMatch, ok := r.URL.Query()["exactMatch"]
+  if !ok || len(exactMatch[0]) < 1 {
     w.WriteHeader(http.StatusBadRequest)
     w.Write([]byte("missing case sensitive in URL params"))
     return Params {}
@@ -77,13 +93,14 @@ func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
     CaseSensitive: caseSensitive[0],
     PageNumber: parsedPageNumber,
     Quantity: parsedQuantity,
+    ExactMatch: exactMatch[0],
   }
 }
 
 func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
   return func(w http.ResponseWriter, r *http.Request) {
     params := populateQueryParams(w, r)
-    results := searcher.Search(params.SearchTerm, params.CaseSensitive, params.PageNumber, params.Quantity)
+    results := searcher.Search(params.SearchTerm, params.CaseSensitive, params.PageNumber, params.Quantity, params.ExactMatch)
     buf := &bytes.Buffer{}
     enc := json.NewEncoder(buf)
     err := enc.Encode(results)
@@ -98,6 +115,30 @@ func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request
   }
 }
 
+func (s *Searcher) InitializeSearchCache() {
+  db, err := sql.Open("sqlite3", "./searchCache.db")
+  if err != nil {
+    println("Error opening search cache db")
+  }
+  println("Opened search cache database")
+
+  tableDeleteStatement, err := db.Prepare("DROP TABLE IF EXISTS searchCache")
+  if err != nil {
+    println("Error preparing table delete statement")
+  }
+  tableDeleteStatement.Exec()
+  if err != nil {
+    println("Error deleting table")
+  }
+
+  tableCreateStatment, err := db.Prepare("create table searchCache (id integer not null primary key, storedSearchTerm text, searchResult text)")
+  _, err = tableCreateStatment.Exec()
+  if err != nil {
+    println("Error creating table")
+  }
+  s.SearchCache = db
+}
+
 func (s *Searcher) Load(filename string) error {
   dat, err := ioutil.ReadFile(filename)
   if err != nil {
@@ -108,23 +149,34 @@ func (s *Searcher) Load(filename string) error {
   return nil
 }
 
-func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber int, quantity int) Response {
-  idxs := s.determineSearch(searchTerm, caseSensitive)
-  results := []string{}
-  for _, idxPair := range idxs {
-    start, end := idxPair[0], idxPair[1]
-    if start > 250 {
-      start = start - 250
-    } else {
-      start = 0
-    }
+func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber int, quantity int, exactMatch string) Response {
+  
+  rows, _ := s.SearchCache.Query("SELECT * FROM searchCache WHERE storedSearchTerm = ?", searchTerm + exactMatch)
+  defer rows.Close()
 
-    if end > len(s.CompleteWorks) - 250 {
-      end = len(s.CompleteWorks) 
-    } else {
-      end = end + 250
+  var id int
+  var storedSearchTerm string
+  var searchResult string
+  for rows.Next() {
+    rows.Scan(&id, &storedSearchTerm, &searchResult)
+  }
+  var results SearchResults
+  if id > 0 {
+    err := json.Unmarshal([]byte(searchResult), &results)
+    if err != nil {
+      println("Error parsing search results")
     }
-    results = append(results, s.CompleteWorks[start:end])
+  } else {
+    results = s.determineSearch(searchTerm, caseSensitive, exactMatch)
+    jsonResults, err := json.Marshal(results)
+    if err != nil {
+      println("Error marshalling results")
+    }
+    insertStatement := "INSERT INTO searchCache (storedSearchTerm, searchResult) VALUES (?, ?)"
+    _, err = s.SearchCache.Exec(insertStatement, searchTerm + exactMatch, string(jsonResults))
+    if err != nil {
+      println("Error inserting into search cache")
+    }
   }
   startPageNumber := (pageNumber - 1) * quantity
   resultsLength := len(results)
@@ -143,32 +195,60 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
   }
 }
 
-func (s *Searcher) determineSearch(searchTerm string, caseSensitive string) [][]int {
-  // if caseSensitive == "true" {
-  //   searchTerm = "[^a-zA-Z]" + searchTerm + "[^a-zA-Z]"
-  //   re := regexp.MustCompile(searchTerm)
-  //   return s.SuffixArray.FindAllIndex(re, -1)
-  // } else {
+func (s *Searcher) determineSearch(searchTerm string, caseSensitive string, exactMatch string) SearchResults {
+  if exactMatch == "true" {
+    return searchExactMatch(s, searchTerm)
+  } else {
     return fuzzySearchResults(s, searchTerm, caseSensitive)
-  // }
+  }
 }
 
-func fuzzySearchResults(s *Searcher, searchTerm string, caseSensitive string) [][]int {
-  results := [][]int{}
+func searchExactMatch(s *Searcher, searchTerm string) SearchResults {
+  searchTerm = "[^a-zA-Z]" + searchTerm + "[^a-zA-Z]"
+  re := regexp.MustCompile(searchTerm)
+  idxs := s.SuffixArray.FindAllIndex(re, -1)
+  return createSearchResultsArray(s, idxs, searchTerm)
+}
+
+func fuzzySearchResults(s *Searcher, searchTerm string, caseSensitive string) SearchResults {
+  results := []SearchResult{}
   splitWorks := strings.Split(s.CompleteWorks, " ")
   var fuzzySearchResults []FuzzyResult
   fuzzySearchResults = fuzzySearch(searchTerm, splitWorks, caseSensitive)
-  println(fuzzySearchResults[0].Value, fuzzySearchResults[1].Value, fuzzySearchResults[2].Value, fuzzySearchResults[3].Value, fuzzySearchResults[4].Value)
   for _, item := range fuzzySearchResults {
-    fuzzySearchTerm := "[^a-zA-Z]" + item.Value + "[^a-zA-Z]"
+    fuzzySearchTerm := item.Value
     if caseSensitive == "true" {
       fuzzySearchTerm = "[^a-zA-Z]" + fuzzySearchTerm + "[^a-zA-Z]"
     } else {
       fuzzySearchTerm = "(?i)[^a-zA-Z]" + fuzzySearchTerm + "[^a-zA-Z]"
     }
-    println(fuzzySearchTerm)
     re := regexp.MustCompile(fuzzySearchTerm)
-    results = append(results, s.SuffixArray.FindAllIndex(re, -1)...)
+    idxs := s.SuffixArray.FindAllIndex(re, -1)
+    results = append(results, createSearchResultsArray(s, idxs, item.Value)...)
+  }
+  return results
+}
+
+func createSearchResultsArray(s *Searcher, idxs [][]int, searchTerm string) SearchResults {
+  results := []SearchResult{}
+  for _, idxPair := range idxs {
+    start, end := idxPair[0], idxPair[1]
+    if start > 250 {
+      start = start - 250
+    } else {
+      start = 0
+    }
+
+    if end > len(s.CompleteWorks) - 250 {
+      end = len(s.CompleteWorks) 
+    } else {
+      end = end + 250
+    }
+    searchResult := SearchResult {
+      SearchTerm: searchTerm,
+      Line: s.CompleteWorks[start:end],
+    }
+    results = append(results, searchResult)
   }
   return results
 }

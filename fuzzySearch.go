@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
   "sort"
+  "regexp"
 )
 
 func min(a, b int) int {
@@ -78,6 +79,9 @@ func fuzzySearch(query string, dataset []string, caseSensitive string) []FuzzyRe
   seenItems := make(map[string]bool)
   var distance int
 	for _, item := range dataset {
+    pattern := "[a-zA-Z]*"
+    re := regexp.MustCompile(pattern)
+    item = re.FindString(item)
     if seenItems[item] {
       continue
     } else {
