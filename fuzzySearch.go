@@ -3,7 +3,7 @@ package main
 import (
 	"strings"
   "sort"
-  "regexp"
+  // "regexp"
   "unicode"
 )
 
@@ -75,15 +75,22 @@ func (f FuzzyResultsSlice) Swap(i, j int) {
 }
 
 func fuzzySearch(searchTerm string, dataset []string, caseSensitive string) []FuzzyResult {
+  searchTerm = strings.Replace(searchTerm, "'", "’", -1)
+  lengthOfSearchTerm := len(searchTerm)
+  splitSearchTerm := strings.Split(searchTerm, " ")
+  lengthOfSplitSearchTerm := len(splitSearchTerm)
+  lengthOfDataset := len(dataset)
   threshold := 2
 	results := []FuzzyResult{}
   seenItems := make(map[string]bool)
   var distance int
-	for _, item := range dataset {
-    pattern := "[a-zA-Z]*"
-    re := regexp.MustCompile(pattern)
-    item = re.FindString(item)
-    if seenItems[item] {
+  for i := lengthOfSplitSearchTerm; i < lengthOfDataset ; i++ {
+    // pattern := "[a-zA-Z]*"
+    // re := regexp.MustCompile(pattern)
+    // item = re.FindString(item)
+    item := returnStringFromSlice(dataset[i-lengthOfSplitSearchTerm:i])
+    lengthOfItem := len(item)
+    if lengthOfItem > lengthOfSearchTerm + 2 || lengthOfItem < lengthOfSearchTerm - 2  || seenItems[item] {
       continue
     } else {
       seenItems[item] = true
@@ -105,8 +112,8 @@ func fuzzySearch(searchTerm string, dataset []string, caseSensitive string) []Fu
   }
   sort.Sort(FuzzyResultsSlice(results))
   var end int
-  if len(results) > 5 {
-    end = 5
+  if len(results) > 10 {
+    end = 10 
   } else {
     end = len(results)
   }
@@ -128,4 +135,17 @@ func filterString(item string, searchTermFirstChar rune) string {
     }
   }
   return item
+}
+
+func returnStringFromSlice(slices []string) string {
+  slicesLength := len(slices)
+  var result string
+  for i, slice := range slices {
+    if i == slicesLength - 1 {
+      result += strings.TrimSpace(slice)
+    } else {
+      result += strings.TrimSpace(slice) + " "
+    }
+  }
+  return result
 }

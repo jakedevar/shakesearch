@@ -180,6 +180,9 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
   }
   startPageNumber := (pageNumber - 1) * quantity
   resultsLength := len(results)
+  if resultsLength == 0 {
+    startPageNumber = 0
+  }
 
   var endPageNumber int
   if startPageNumber + quantity > resultsLength {
@@ -187,7 +190,6 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
   } else {
     endPageNumber = startPageNumber + quantity
   }
-  println("startPageNumber: ", startPageNumber, " endPageNumber: ", endPageNumber)
   paginatedResults := results[startPageNumber:endPageNumber]
   return Response {
     Results: paginatedResults,
@@ -197,8 +199,8 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
 
 func (s *Searcher) determineSearch(searchTerm string, caseSensitive string, exactMatch string) SearchResults {
   if exactMatch == "true" {
-    searchTerm = regexp.QuoteMeta(searchTerm)
-    println("searchTerm: ", searchTerm)
+    apostropheSanitize := strings.Replace(searchTerm, "'", "’", -1) 
+    searchTerm = regexp.QuoteMeta(apostropheSanitize)
     return searchExactMatch(s, searchTerm)
   } else {
     return fuzzySearchResults(s, searchTerm, caseSensitive)
@@ -217,12 +219,13 @@ func fuzzySearchResults(s *Searcher, searchTerm string, caseSensitive string) Se
   var fuzzySearchResults []FuzzyResult
   fuzzySearchResults = fuzzySearch(searchTerm, splitWorks, caseSensitive)
   for _, item := range fuzzySearchResults {
-    fuzzySearchTerm := item.Value
+    fuzzySearchTerm := regexp.QuoteMeta(item.Value)  
     if caseSensitive == "true" {
       fuzzySearchTerm = "[^a-zA-Z]" + fuzzySearchTerm + "[^a-zA-Z]"
     } else {
       fuzzySearchTerm = "(?i)[^a-zA-Z]" + fuzzySearchTerm + "[^a-zA-Z]"
     }
+
     re := regexp.MustCompile(fuzzySearchTerm)
     idxs := s.SuffixArray.FindAllIndex(re, -1)
     results = append(results, createSearchResultsArray(s, idxs, item.Value)...)

@@ -54,3 +54,24 @@ that would easily solve that match problem. but this will greatly reduce efficie
 
 notes: just jutting down some thoughts here. if i return the actual distance that the word was from the mispelled word i can sort the results so that the ones
 with the least amount of distance are sent first.
+
+=====
+04/12
+so i realized that the fuzzy search as it is will only search for singular words
+what i am thinking i could do is iterate through every index length of the complete works. starting with i being the length of the search term. 
+then slicing from the length - i and iterating untill i == lengths of the complete works.
+this will retain some speed for singular words but i imagine this will still slow things down considerably. however the side effect of this is that i 
+can now fuzzy search sentances
+this turned out to be not a good solution at all. it iterates way to many times and is way way to slow. but i'm thinmking about actually still spliting 
+the input string by spaces. but then also spliting the input phrase by spaces as well. then i can iterate by slice of something like a sentence and not have
+to check absolutly every position. strings.Split on a single word should just return that word in an array which i can take the length of which and use it to slice
+the array accordingly. making a string out of the slice of strings
+
+so this works. at least for singular words. but it takes quite a long time still. what I could do is while I am making the string out of the array of slices
+i could also sum the length of each word inside. if it is longer then the length of the search word then there is no need to continue the iteration
+1. get the length of the word created from the slice of words 
+2. in the skip if else block have it skip if the number does not == the number that was returned from the search string **reminder to trim whitespace from input**
+
+it works!! it's even faster than before!! however this woulden't account for misspelled words. i need to account for potentially missing characters in the input
+i think i can do this by just adding +/- 2 to the if else block
+
