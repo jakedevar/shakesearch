@@ -111,9 +111,11 @@ func fuzzySearch(searchTerm string, dataset []string, caseSensitive string) []Fu
     }
   }
   sort.Sort(FuzzyResultsSlice(results))
+
+  resultsLength := 5
   var end int
-  if len(results) > 10 {
-    end = 10 
+  if len(results) > resultsLength {
+    end = resultsLength
   } else {
     end = len(results)
   }

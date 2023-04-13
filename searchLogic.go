@@ -190,6 +190,7 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
   } else {
     endPageNumber = startPageNumber + quantity
   }
+
   paginatedResults := results[startPageNumber:endPageNumber]
   return Response {
     Results: paginatedResults,
@@ -201,14 +202,20 @@ func (s *Searcher) determineSearch(searchTerm string, caseSensitive string, exac
   if exactMatch == "true" {
     apostropheSanitize := strings.Replace(searchTerm, "'", "’", -1) 
     searchTerm = regexp.QuoteMeta(apostropheSanitize)
-    return searchExactMatch(s, searchTerm)
+    return searchExactMatch(s, searchTerm, caseSensitive)
   } else {
     return fuzzySearchResults(s, searchTerm, caseSensitive)
   }
 }
 
-func searchExactMatch(s *Searcher, searchTerm string) SearchResults {
-  re := regexp.MustCompile(searchTerm)
+func searchExactMatch(s *Searcher, searchTerm string, caseSensitive string) SearchResults {
+  var rePattern string
+  if caseSensitive == "true" {
+    rePattern = searchTerm
+  } else {
+    rePattern = "(?i)" + searchTerm
+  }
+  re := regexp.MustCompile(rePattern)
   idxs := s.SuffixArray.FindAllIndex(re, -1)
   return createSearchResultsArray(s, idxs, searchTerm)
 }
