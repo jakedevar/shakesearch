@@ -78,7 +78,7 @@ func (f FuzzyResultsSlice) Swap(i, j int) {
 func FuzzySearch(searchTerm string, dataset []string, caseSensitive string) []FuzzyResult {
   lengthOfDataset := len(dataset)
 
-  numGoRoutines := 10
+  numGoRoutines := 20
   chunkSize := lengthOfDataset / numGoRoutines
 
   channelResults := make(chan []FuzzyResult)
