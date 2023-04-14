@@ -5,10 +5,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+  "pulley.com/shakesearch/searchLogic"
 )
 
 func main() {
-	searcher := Searcher{}
+	searcher := searchLogic.Searcher{}
 	err := searcher.Load("completeworks.txt")
 	if err != nil {
 		log.Fatal(err)
@@ -19,7 +20,7 @@ func main() {
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/", fs)
 
-	http.HandleFunc("/search", handleSearch(searcher))
+	http.HandleFunc("/search", searchLogic.HandleSearch(searcher))
 
 	port := os.Getenv("PORT")
 	if port == "" {
