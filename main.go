@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
   "pulley.com/shakesearch/searchLogic"
+  "github.com/joho/godotenv"
 )
 
 func main() {
@@ -15,6 +16,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	err = godotenv.Load()
+  if err != nil {
+    println("Error loading .env file")
+  }
+
   searcher.InitializeSearchCache()
 
 	fs := http.FileServer(http.Dir("./static"))
@@ -22,7 +28,7 @@ func main() {
 
 	http.HandleFunc("/search", searchLogic.HandleSearch(searcher))
 
-	port := os.Getenv("PORT")
+  port := os.Getenv("PORT")
 	if port == "" {
 		port = "3001"
 	}
