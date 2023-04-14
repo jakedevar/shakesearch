@@ -21,6 +21,7 @@ func main() {
 	http.Handle("/", fs)
 
 	http.HandleFunc("/search", searchLogic.HandleSearch(searcher))
+	http.HandleFunc("/ping", handlePing)
 
   port := os.Getenv("PORT")
 	if port == "" {
@@ -34,4 +35,7 @@ func main() {
 	}
 }
 
+func handlePing(w http.ResponseWriter, r *http.Request) {
+  fmt.Fprintf(w, "pong")
+}
 
