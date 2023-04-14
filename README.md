@@ -1,30 +1,25 @@
 # ShakeSearch
 
-Welcome to the Pulley Shakesearch Take-home Challenge! In this repository,
-you'll find a simple web app that allows a user to search for a text string in
-the complete works of Shakespeare.
+A working version of the application can be found [here](https://jakedevar-shakesearch.onrender.com/)
 
-You can see a live version of the app at
-https://pulley-shakesearch.onrender.com/. Try searching for "Hamlet" to display
-a set of results.
+##New Features
+These are some new features added to the ShakeSearch application.
 
-In it's current state, however, the app is in rough shape. The search is
-case sensitive, the results are difficult to read, and the search is limited to
-exact matches.
+###Backend
+* Added fuzzy search feature that can handle misspelled words/sentances
+* Preserved the ability to search for the exact match within the text
+* Added case sensitive searches to both fuzy search and exact match
+* Added caching using SQLite3 for search terms
+* Paginated search results using quanity and page number
+* Fixed out of bounds error when delivering search results within the 250 character range of found index
+* Trimed whitespace of search term
 
-## Your Mission
+##Front End
+* Made the search bar able to search without using a submit button for searches at the speed of thought
+* Added buttons to enable case sensitive searches and exact match searches (or a combination of the two) 
+* Added a quantity amount to how many results would be delivered to the front end
+* Added page buttons at the top and bottom for the pagination of data and convinience
+* Added error handeling for search results
+* Made the title of the browser tab ShakeSearch
+* Added a logo
 
-Improve the app! Think about the problem from the **user's perspective**
-and prioritize your changes according to what you think is most useful.
-
-You can approach this with a back-end, front-end, or full-stack focus.
-
-## Evaluation
-
-We will be primarily evaluating based on how well the search works for users. A search result with a lot of features (i.e. multi-words and mis-spellings handled), but with results that are hard to read would not be a strong submission.
-
-## Submission
-
-1. Fork this repository and send us a link to your fork after pushing your changes.
-2. Render (render.com) hosting, the application deploys cleanly from a public url.
-3. In your submission, share with us what changes you made and how you would prioritize changes if you had more time.
