@@ -49,17 +49,15 @@ To avoid expensive search operations, I have implemented a form of caching using
 
 
 # Future Changes
-
 There are several things that I would like to address if I had more time.
 
 ### Search by Character & Display Character Lines
-Searching by character would be a nice feature to have for somebody who is trying to just look up lines that a certain character said. I would also like to have the search results on the frontend be displayed with new lines between a character speaking lines for easier readability.
+Searching by character would be a nice feature to have for someone who is trying to look up lines spoken by a specific character. Additionally, I would like the search results on the frontend to be displayed with new lines between a character speaking lines for easier readability.
 
 ### Search by Play & Scene
-In addition to the regular search function, searching for a term in a particular play could be a great feature to implement as well as making the search feature fucntion even faster by passing a query parameter to the backend to only search for a text within a given scene from a particular play.
+In addition to the regular search function, the ability to search for a term in a particular play could be a great feature to implement. This would also make the search feature function even faster by passing a query parameter to the backend to search for text within a given scene from a specific play.
 
 ### Search Results
-i noticed during testing that there were several phrases that did not show up when searching most notabley "We are such stuff As dreams are made on," if given more time I would like to find a solution to this problem.
+I noticed during testing that there were several phrases that did not show up when searching, most notably "We are such stuff As dreams are made on." If given more time, I would like to find a solution to this problem.
 
-If you split the previous search into either "We are such stuff" or "As dreams are made on," search results are found. However, if you search the full term nothing is found. The fuzzy search function does recognize that this sentence exists within the text. Though any searches for it as well as other longer sentences are not found, either from within the suffix array or using a regexp method to search the complete works as a string.
-
+When you split the previous search into either "We are such stuff" or "As dreams are made on," search results are found. However, if you search the full term, nothing is found. The fuzzy search function does recognize that this sentence exists within the text. Though, searches for it, as well as other longer sentences, are not found, either from within the suffix array or using a regexp method to search the complete works as a string.
