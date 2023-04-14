@@ -1,6 +1,7 @@
-package main
+package searchLogic
 
 import (
+  "pulley.com/shakesearch/fuzzySearch"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -99,7 +100,7 @@ func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
   }
 }
 
-func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
+func HandleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
   return func(w http.ResponseWriter, r *http.Request) {
     params := populateQueryParams(w, r)
     results := searcher.Search(params.SearchTerm, params.CaseSensitive, params.PageNumber, params.Quantity, params.ExactMatch)
@@ -225,8 +226,8 @@ func fuzzySearchResults(s *Searcher, searchTerm string, caseSensitive string) Se
   results := []SearchResult{}
   splitWorks := strings.Fields(s.CompleteWorks)
   // splitWorks := strings.Split("Hamlet’s mother, now wife of Claudius. POLONIUS, Lord Chamberlain.", " ")
-  var fuzzySearchResults []FuzzyResult
-  fuzzySearchResults = fuzzySearch(searchTerm, splitWorks, caseSensitive)
+  var fuzzySearchResults []fuzzySearch.FuzzyResult
+  fuzzySearchResults = fuzzySearch.FuzzySearch(searchTerm, splitWorks, caseSensitive)
   for _, item := range fuzzySearchResults {
     fuzzySearchTerm := regexp.QuoteMeta(item.Value)  
     if caseSensitive == "true" {

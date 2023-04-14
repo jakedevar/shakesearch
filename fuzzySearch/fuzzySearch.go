@@ -1,4 +1,4 @@
-package main
+package fuzzySearch
 
 import (
 	"strings"
@@ -75,7 +75,7 @@ func (f FuzzyResultsSlice) Swap(i, j int) {
   f[i], f[j] = f[j], f[i]
 }
 
-func fuzzySearch(searchTerm string, dataset []string, caseSensitive string) []FuzzyResult {
+func FuzzySearch(searchTerm string, dataset []string, caseSensitive string) []FuzzyResult {
   lengthOfDataset := len(dataset)
 
   numGoRoutines := 10
