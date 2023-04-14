@@ -61,3 +61,9 @@ In addition to the regular search function, the ability to search for a term in 
 I noticed during testing that there were several phrases that did not show up when searching, most notably "We are such stuff As dreams are made on." If given more time, I would like to find a solution to this problem.
 
 When you split the previous search into either "We are such stuff" or "As dreams are made on," search results are found. However, if you search the full term, nothing is found. The fuzzy search function does recognize that this sentence exists within the text. Though, searches for it, as well as other longer sentences, are not found, either from within the suffix array or using a regexp method to search the complete works as a string.
+
+### Refactoring
+I would like to refactor the code structure to improve readability and efficiency in both the frontend and backend components.
+
+### Testing
+I would like to add tests to both frontend and backend components.
