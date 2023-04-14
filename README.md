@@ -67,3 +67,6 @@ I would like to refactor the code structure to improve readability and efficienc
 
 ### Testing
 I would like to add tests to both frontend and backend components.
+
+### Sytem Resources
+If given the option, I would increase the CPU capability of the application server to take advantage of the Go routine functionality in the fuzzy search code.
