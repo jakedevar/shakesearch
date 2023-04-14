@@ -3,8 +3,9 @@ package main
 import (
 	"strings"
   "sort"
-  // "regexp"
+  "regexp"
   "unicode"
+  "sync"
 )
 
 func min(a, b int) int {
@@ -75,36 +76,81 @@ func (f FuzzyResultsSlice) Swap(i, j int) {
 }
 
 func fuzzySearch(searchTerm string, dataset []string, caseSensitive string) []FuzzyResult {
-  searchTerm = strings.Replace(searchTerm, "'", "’", -1)
-  lengthOfSearchTerm := len(searchTerm)
+  lengthOfDataset := len(dataset)
+
+  numGoRoutines := 10
+  chunkSize := lengthOfDataset / numGoRoutines
+
+  channelResults := make(chan []FuzzyResult)
+  var wg sync.WaitGroup
+
+  for i := 0; i < numGoRoutines; i++ {
+    start := i * chunkSize
+    end := (i + 1) * chunkSize
+
+    if i == numGoRoutines-1 {
+      end = lengthOfDataset
+    }
+
+    wg.Add(1)
+    go func(start, end int) {
+      defer wg.Done()
+      partialResults := fuzzySearchPartial(searchTerm, dataset[start:end], caseSensitive)
+      channelResults <- partialResults
+    }(start, end)
+  }
+
+  go func() {
+    wg.Wait()
+    close(channelResults)
+  }()
+
+  results := []FuzzyResult{}
+  for partialResults := range channelResults {
+    results = append(results, partialResults...)
+  }
+
+  sort.Sort(FuzzyResultsSlice(results))
+
+  resultsSliceLength := 5
+  var end int
+  if len(results) > resultsSliceLength {
+    end = resultsSliceLength
+  } else {
+    end = len(results)
+  }
+  return results[:end]
+}
+
+func fuzzySearchPartial(searchTerm string, dataset []string, caseSensitive string) []FuzzyResult {
+  sanitizedSearchTerm := sanitizeSearchTerm(searchTerm)
+  lengthOfSanitizedSearchTerm := len(sanitizedSearchTerm)
   splitSearchTerm := strings.Split(searchTerm, " ")
   lengthOfSplitSearchTerm := len(splitSearchTerm)
   lengthOfDataset := len(dataset)
-  threshold := 2
-	results := []FuzzyResult{}
+  threshold := 10 
+  results := []FuzzyResult{}
   seenItems := make(map[string]bool)
   var distance int
   for i := lengthOfSplitSearchTerm; i < lengthOfDataset ; i++ {
-    // pattern := "[a-zA-Z]*"
-    // re := regexp.MustCompile(pattern)
-    // item = re.FindString(item)
     item := returnStringFromSlice(dataset[i-lengthOfSplitSearchTerm:i])
-    lengthOfItem := len(item)
-    if lengthOfItem > lengthOfSearchTerm + 2 || lengthOfItem < lengthOfSearchTerm - 2  || seenItems[item] {
+    sanitizedItem := sanitizeSearchTerm(item)
+    lengthOfItem := len(sanitizedItem)
+    if lengthOfSanitizedSearchTerm > lengthOfItem + 2 || lengthOfSanitizedSearchTerm < lengthOfItem - 2  || seenItems[item] {
       continue
     } else {
       seenItems[item] = true
     }
 
-    searchTermFirstChar := rune(searchTerm[0])
+    searchTermFirstChar := rune(sanitizedSearchTerm[0])
     if caseSensitive == "true" {
-      item = filterString(item, searchTermFirstChar)
+      item = filterString(sanitizedItem, searchTermFirstChar)
       if item == "" {
         continue
       }
-      distance = levenshteinDistance(searchTerm, item)
+      distance = levenshteinDistance(sanitizedSearchTerm, sanitizedItem)
     } else {
-      distance = levenshteinDistance(strings.ToLower(searchTerm), strings.ToLower(item))
+      distance = levenshteinDistance(strings.ToLower(sanitizedSearchTerm), strings.ToLower(sanitizedItem))
     }
     if distance <= threshold {
       results = append(results, FuzzyResult{Value: item, Distance: distance})
@@ -150,4 +196,11 @@ func returnStringFromSlice(slices []string) string {
     }
   }
   return result
+}
+
+func sanitizeSearchTerm(searchTerm string) string {
+  reg := regexp.MustCompile(`[\W_]`)
+  sanitizedSearchTerm := reg.ReplaceAllString(searchTerm, " ")
+  sanitizedSearchTerm = strings.Replace(sanitizedSearchTerm, "'", "’", -1)
+  return strings.TrimSpace(sanitizedSearchTerm)
 }

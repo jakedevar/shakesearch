@@ -88,8 +88,10 @@ func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
     return Params {}
   }
 
+  trimWhiteSpace := strings.TrimSpace(searchTerm[0]) 
+  sanitizedSearchTerm := strings.Replace(trimWhiteSpace, "'", "’", -1) 
   return Params {
-    SearchTerm: searchTerm[0],
+    SearchTerm: sanitizedSearchTerm,
     CaseSensitive: caseSensitive[0],
     PageNumber: parsedPageNumber,
     Quantity: parsedQuantity,
@@ -200,8 +202,7 @@ func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber in
 
 func (s *Searcher) determineSearch(searchTerm string, caseSensitive string, exactMatch string) SearchResults {
   if exactMatch == "true" {
-    apostropheSanitize := strings.Replace(searchTerm, "'", "’", -1) 
-    searchTerm = regexp.QuoteMeta(apostropheSanitize)
+    searchTerm = regexp.QuoteMeta(searchTerm)
     return searchExactMatch(s, searchTerm, caseSensitive)
   } else {
     return fuzzySearchResults(s, searchTerm, caseSensitive)
@@ -222,7 +223,8 @@ func searchExactMatch(s *Searcher, searchTerm string, caseSensitive string) Sear
 
 func fuzzySearchResults(s *Searcher, searchTerm string, caseSensitive string) SearchResults {
   results := []SearchResult{}
-  splitWorks := strings.Split(s.CompleteWorks, " ")
+  splitWorks := strings.Fields(s.CompleteWorks)
+  // splitWorks := strings.Split("Hamlet’s mother, now wife of Claudius. POLONIUS, Lord Chamberlain.", " ")
   var fuzzySearchResults []FuzzyResult
   fuzzySearchResults = fuzzySearch(searchTerm, splitWorks, caseSensitive)
   for _, item := range fuzzySearchResults {
@@ -230,9 +232,8 @@ func fuzzySearchResults(s *Searcher, searchTerm string, caseSensitive string) Se
     if caseSensitive == "true" {
       fuzzySearchTerm = "[^a-zA-Z]" + fuzzySearchTerm + "[^a-zA-Z]"
     } else {
-      fuzzySearchTerm = "(?i)[^a-zA-Z]" + fuzzySearchTerm + "[^a-zA-Z]"
+      fuzzySearchTerm = "(?i)" + fuzzySearchTerm
     }
-
     re := regexp.MustCompile(fuzzySearchTerm)
     idxs := s.SuffixArray.FindAllIndex(re, -1)
     results = append(results, createSearchResultsArray(s, idxs, item.Value)...)
