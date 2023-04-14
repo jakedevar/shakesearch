@@ -23,6 +23,7 @@ These are some new features added to the ShakeSearch application.
 * Implemented error handling for search results
 * Added documentation to provide a brief description of features
 * Changed the heading of the browser tab to ShakeSearch
+* Added how many results were found from a search
 * Created a title bar
 * Added logos
 
