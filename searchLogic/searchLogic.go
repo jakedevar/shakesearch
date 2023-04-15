@@ -103,7 +103,7 @@ func populateQueryParams(w http.ResponseWriter, r *http.Request) Params {
 func HandleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
   return func(w http.ResponseWriter, r *http.Request) {
     params := populateQueryParams(w, r)
-    results := searcher.Search(params.SearchTerm, params.CaseSensitive, params.PageNumber, params.Quantity, params.ExactMatch)
+    results := searcher.Search(params)
     buf := &bytes.Buffer{}
     enc := json.NewEncoder(buf)
     err := enc.Encode(results)
@@ -152,7 +152,12 @@ func (s *Searcher) Load(filename string) error {
   return nil
 }
 
-func (s *Searcher) Search(searchTerm string, caseSensitive string, pageNumber int, quantity int, exactMatch string) Response {
+func (s *Searcher) Search(params Params) Response {
+  searchTerm := params.SearchTerm
+  caseSensitive := params.CaseSensitive
+  pageNumber := params.PageNumber
+  quantity := params.Quantity
+  exactMatch := params.ExactMatch
   
   rows, _ := s.SearchCache.Query("SELECT * FROM searchCache WHERE storedSearchTerm = ?", searchTerm + caseSensitive + exactMatch)
   defer rows.Close()
