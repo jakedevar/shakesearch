@@ -112,7 +112,8 @@ func HandleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request
       w.Write([]byte("encoding failure"))
       return
     }
-    enableCORS(&w)
+    allowedOrigin := "https://jakedevar-shakesearch.onrender.com/"
+    enableCORS(&w, allowedOrigin)
     w.Header().Set("Content-Type", "application/json")
     w.Write(buf.Bytes())
   }
@@ -271,8 +272,8 @@ func createSearchResultsArray(s *Searcher, idxs [][]int, searchTerm string) Sear
   return results
 }
 
-func enableCORS(w *http.ResponseWriter) {
-  (*w).Header().Set("Access-Control-Allow-Origin", "*")
+func enableCORS(w *http.ResponseWriter, allowedOrigin string) {
+  (*w).Header().Set("Access-Control-Allow-Origin", allowedOrigin)
   (*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
   (*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 }
