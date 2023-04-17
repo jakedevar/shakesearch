@@ -47,24 +47,24 @@ To avoid expensive search operations, I have implemented a form of caching using
 
 
 # Future Changes
-There are several things that I would like to address if I had more time:
+Here are the future changes I would make in order of priority:
 
-### Search by Character & Display Character Lines
-Searching by character would be a nice feature to have for someone who is trying to look up lines spoken by a specific character. Additionally, I would like the search results on the frontend to be displayed with new lines between a character speaking lines for easier readability.
-
-### Search by Play & Scene
+### 1. Search by Play & Scene
 In addition to the regular search function, the ability to search for a term in a particular play would be useful. Preferably, I would implement this in a way that would also make the search feature function even faster by passing a query parameter to the backend to search for text within a given scene from a specific play.
 
-### Search Results
+### 2. Search by Character & Display Character Lines
+Searching by character would be a nice feature to have for someone who is trying to look up lines spoken by a specific character. Additionally, I would like the search results on the frontend to be displayed with new lines between a character speaking lines for easier readability.
+
+### 3. Search Results
 I noticed during testing that there were a few phrases that did not show up when searching, most notably "We are such stuff As dreams are made on." If given more time, I would like to find a solution to this problem.
 
 When you split the previous search into either "We are such stuff" or "As dreams are made on," search results are found. However, if you search the full term, nothing is found. The fuzzy search function does recognize that this sentence exists within the text. Though, searches for it, as well as other longer sentences, are not found, either from within the suffix array or using a regexp method to search the complete works as a string.
 
-### Refactoring
+### 4. Refactoring
 I would like to refactor the code structure to improve readability and efficiency in both the frontend and backend components.
 
-### Testing
+### 5. Testing
 I would like to add tests to both frontend and backend components.
 
-### Sytem Resources
+### 6. Sytem Resources
 If given the option, I would increase the CPU capability of the application server to take advantage of the Go routine functionality in the fuzzy search code.
